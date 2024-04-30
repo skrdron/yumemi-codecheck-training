@@ -37,7 +37,6 @@ class ViewController: UITableViewController, UISearchBarDelegate {
     }
     
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
-        
         word = searchBar.text!
         
         if word.count != 0 {
