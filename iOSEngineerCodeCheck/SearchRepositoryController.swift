@@ -14,9 +14,9 @@ class SearchRepositoryController: UITableViewController, UISearchBarDelegate {
     
     var repositories: [[String: Any]]=[]
     var task: URLSessionTask?
-    var searchWord: String!
-    var url: String!
-    var selectedRrepositoryIndex: Int!
+    var searchWord: String?
+    var url: String?
+    var selectedRrepositoryIndex: Int?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -35,27 +35,39 @@ class SearchRepositoryController: UITableViewController, UISearchBarDelegate {
     }
     
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
-        searchWord = searchBar.text!
+        guard let searchWord = searchBar.text, !searchWord.isEmpty else {
+               return
+           }
+        self.searchWord = searchWord
         
-        if searchWord.count != 0 {
-            url = "https://api.github.com/search/repositories?q=\(searchWord!)"
-            task = URLSession.shared.dataTask(with: URL(string: url)!) { (data, res, err) in
-                if let obj = try! JSONSerialization.jsonObject(with: data!) as? [String: Any] {
-                    if let items = obj["items"] as? [[String: Any]] {
-                    self.repositories = items
-                        DispatchQueue.main.async {
-                            self.tableView.reloadData()
-                        }
-                    }
-                }
-            }
-        task?.resume()
+        url = "https://api.github.com/search/repositories?q=\(searchWord)"
+        guard let url = URL(string: self.url ?? "") else {
+            print("無効なURL")
+            return
         }
+        
+        task = URLSession.shared.dataTask(with: url) { [weak self] data, res, err in
+                 guard let data = data else {
+                     print("無効なデータ")
+                     return
+                 }
+                 do {
+                     if let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                        let items = obj["items"] as? [[String: Any]] {
+                         self?.repositories = items
+                         DispatchQueue.main.async {
+                             self?.tableView.reloadData()
+                         }
+                     }
+                 } catch {
+                    print("JSON解析エラー")
+                 }
+             }
+             task?.resume()
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        if segue.identifier == "Detail"{
-            let destination = segue.destination as! RepositoryDetailViewController
+        if segue.identifier == "Detail", let destination = segue.destination as? RepositoryDetailViewController{
             destination.searchRepositoryController = self
         }
     }
@@ -66,9 +78,9 @@ class SearchRepositoryController: UITableViewController, UISearchBarDelegate {
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = UITableViewCell()
-        let rp = repositories[indexPath.row]
-        cell.textLabel?.text = rp["full_name"] as? String ?? ""
-        cell.detailTextLabel?.text = rp["language"] as? String ?? ""
+        let repository = repositories[indexPath.row]
+        cell.textLabel?.text = repository["full_name"] as? String ?? ""
+        cell.detailTextLabel?.text = repository["language"] as? String ?? ""
         cell.tag = indexPath.row
         return cell
     }
