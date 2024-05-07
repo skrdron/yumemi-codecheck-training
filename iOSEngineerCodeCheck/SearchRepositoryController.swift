@@ -12,81 +12,68 @@ class SearchRepositoryController: UITableViewController, UISearchBarDelegate {
 
     @IBOutlet weak var SearchBar: UISearchBar!
     
-    var repositories: [[String: Any]]=[]
-    var task: URLSessionTask?
-    var searchWord: String?
-    var url: String?
-    var selectedRrepositoryIndex: Int?
+    var viewModel = SearchRepositoryViewModel()
     
     override func viewDidLoad() {
-        super.viewDidLoad()
+       //継承したUITableViewControllerのviewDidLoad()メソッドを呼び出し、基本的なビューのセットアップを行う
+       super.viewDidLoad()
+       //クラス自身をSearchBarのデリゲートに設定
+       SearchBar.delegate = self
+       //ビューモデル内でリポジトリのデータが更新された際に呼び出されるクロージャを定義
+       viewModel.onRepositoriesUpdated = {
+         DispatchQueue.main.async {
+           self.tableView.reloadData()
+         }
+       }
+       //テーブルビューのセル登録 : identifierからやってもうまくいかなかった
+       tableView.register(UITableViewCell.self, forCellReuseIdentifier: "RepositoryCell")
+    }
 
-        SearchBar.text = "GitHubのリポジトリを検索できるよー"
-        SearchBar.delegate = self
+    //テーブルビューの行が選択された時の処理
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        performSegue(withIdentifier: "showDetail", sender: self)
     }
     
+    //検索バーの編集が始まる前の処理
     func searchBarShouldBeginEditing(_ searchBar: UISearchBar) -> Bool {
-        searchBar.text = ""
+        searchBar.text = "GitHubのリポジトリを検索できるよー"
+        //編集を許可するためにtrueを返す
         return true
     }
-    
-    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
-        task?.cancel()
-    }
-    
-    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
-        guard let searchWord = searchBar.text, !searchWord.isEmpty else {
-               return
-           }
-        self.searchWord = searchWord
         
-        url = "https://api.github.com/search/repositories?q=\(searchWord)"
-        guard let url = URL(string: self.url ?? "") else {
-            print("無効なURL")
+    //検索バーで検索ボタンが押された時の処理
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        guard let searchText = searchBar.text, !searchText.isEmpty else {
             return
         }
-        
-        task = URLSession.shared.dataTask(with: url) { [weak self] data, res, err in
-                 guard let data = data else {
-                     print("無効なデータ")
-                     return
-                 }
-                 do {
-                     if let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                        let items = obj["items"] as? [[String: Any]] {
-                         self?.repositories = items
-                         DispatchQueue.main.async {
-                             self?.tableView.reloadData()
-                         }
-                     }
-                 } catch {
-                    print("JSON解析エラー")
-                 }
-             }
-             task?.resume()
+        //リクエストをビューモデルに送信
+        viewModel.searchRepositories(searchWord: searchText)
     }
-    
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        if segue.identifier == "Detail", let destination = segue.destination as? RepositoryDetailViewController{
-            destination.searchRepositoryController = self
-        }
+
+    //テーブルビューのセクション数を定義
+    override func numberOfSections(in tableView: UITableView) -> Int {
+        return 1
     }
-    
+
+    //テーブルビューの行数を定義
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return repositories.count
+        return viewModel.repositories.count
     }
-    
+
+    //テーブルビューのセルを構成
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = UITableViewCell()
-        let repository = repositories[indexPath.row]
-        cell.textLabel?.text = repository["full_name"] as? String ?? ""
-        cell.detailTextLabel?.text = repository["language"] as? String ?? ""
-        cell.tag = indexPath.row
+        let cell = tableView.dequeueReusableCell(withIdentifier: "RepositoryCell", for: indexPath)
+        let repository = viewModel.repositories[indexPath.row]
+        cell.textLabel?.text = repository.fullName
+        cell.detailTextLabel?.text = repository.language
         return cell
     }
-    
-    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        selectedRrepositoryIndex = indexPath.row
-        performSegue(withIdentifier: "Detail", sender: self)
+
+    //セグエを準備する
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        if segue.identifier == "showDetail", let destination = segue.destination as? RepositoryDetailViewController,
+            let selectedIndex = tableView.indexPathForSelectedRow?.row {
+            destination.viewModel = RepositoryDetailViewModel(repository: viewModel.repositories[selectedIndex])
+        }
     }
 }
