@@ -18,6 +18,7 @@ class SearchRepositoryController: UITableViewController, UISearchBarDelegate {
        //継承したUITableViewControllerのviewDidLoad()メソッドを呼び出し、基本的なビューのセットアップを行う
        super.viewDidLoad()
        //クラス自身をSearchBarのデリゲートに設定
+       SearchBar.text = "GitHubのリポジトリを検索できるよー"
        SearchBar.delegate = self
        //ビューモデル内でリポジトリのデータが更新された際に呼び出されるクロージャを定義
        viewModel.onRepositoriesUpdated = {
@@ -36,7 +37,7 @@ class SearchRepositoryController: UITableViewController, UISearchBarDelegate {
     
     //検索バーの編集が始まる前の処理
     func searchBarShouldBeginEditing(_ searchBar: UISearchBar) -> Bool {
-        searchBar.text = "GitHubのリポジトリを検索できるよー"
+        searchBar.text = ""
         //編集を許可するためにtrueを返す
         return true
     }
