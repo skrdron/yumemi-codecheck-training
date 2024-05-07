@@ -18,39 +18,33 @@ class RepositoryDetailViewController: UIViewController {
     @IBOutlet weak var forksLabel: UILabel!
     @IBOutlet weak var issuesLabel: UILabel!
     
-    weak var searchRepositoryController: SearchRepositoryController?
-        
+    var viewModel: RepositoryDetailViewModel!
+    
     override func viewDidLoad() {
         super.viewDidLoad()
+        displayRepositoryDetails()
+    }
         
-        guard let viewController = searchRepositoryController,
-              let index = viewController.selectedRrepositoryIndex,
-              index < viewController.repositories.count else {
+    func displayRepositoryDetails() {
+        guard let repository = viewModel.repository else {
             return
         }
-        let repository = viewController.repositories[index]
-        
-        languageLabel.text = "Written in \(repository["language"] as? String ?? "")"
-        starsLabel.text = "\(repository["stargazers_count"] as? Int ?? 0) stars"
-        watchersLabel.text = "\(repository["wachers_count"] as? Int ?? 0) watchers"
-        forksLabel.text = "\(repository["forks_count"] as? Int ?? 0) forks"
-        issuesLabel.text = "\(repository["open_issues_count"] as? Int ?? 0) open issues"
-        getImage(for: repository)
-    }
-    
-    func getImage(for repository: [String: Any]) {
-        titleLabel.text = repository["full_name"] as? String
-        
-        if let owner = repository["owner"] as? [String: Any],
-           let imgURL = owner["avatar_url"] as? String,
-           let url = URL(string: imgURL) {
-            URLSession.shared.dataTask(with: url) { [weak self] data, res, err in
-                if let data = data, let img = UIImage(data: data) {
-                    DispatchQueue.main.async {
-                        self?.imageView.image = img
-                    }
-                } else {
-                    print("データのロードに失敗しました")
+            
+        titleLabel.text = repository.fullName
+        languageLabel.text = "Written in \(repository.language)"
+        starsLabel.text = "\(repository.starsCount) stars"
+        watchersLabel.text = "\(repository.watchersCount) watchers"
+        forksLabel.text = "\(repository.forksCount) forks"
+        issuesLabel.text = "\(repository.openIssuesCount) open issues"
+
+        // 画像の読み込み
+        if let url = URL(string: repository.avatarURL) {
+            URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+                guard let data = data, let image = UIImage(data: data) else {
+                    return
+                }
+                DispatchQueue.main.async {
+                    self?.imageView.image = image
                 }
             }.resume()
         }
